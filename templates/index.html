@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helical Gear Calculator — Engineering Dashboard</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Tippy.js (tooltips) -->
+  <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
+  <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- =====================================================================
+     HEADER
+===================================================================== -->
+<header class="app-header">
+  <div class="brand">
+    <div class="brand-icon">⚙</div>
+    <div class="brand-text">
+      <h1>Helical Gear Calculator</h1>
+      <span>PD-Based · Inch Units · Engineering Grade</span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" id="btnSave"><span>💾</span> <span>Save</span></button>
+    <button class="btn btn-ghost" id="btnLoad"><span>📂</span> <span>Load</span></button>
+    <button class="btn btn-outline" id="btnExportPDF"><span>📄</span> <span>PDF</span></button>
+    <button class="btn btn-outline" id="btnExportExcel"><span>📊</span> <span>Excel</span></button>
+    <button class="btn btn-ghost" id="btnReset"><span>🔄</span> <span>Reset</span></button>
+  </div>
+</header>
+
+<!-- =====================================================================
+     MAIN LAYOUT
+===================================================================== -->
+<div class="app-layout">
+
+  <!-- ================================================================
+       SIDEBAR — INPUTS
+  ================================================================ -->
+  <aside class="sidebar">
+
+    <!-- ---- Gear Geometry ---- -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">📐</div>
+        <h3>Gear Geometry</h3>
+      </div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label for="pitch_diameter">
+            Pitch Diameter (PD)
+            <span class="unit-badge">in</span>
+            <span class="tooltip-icon" data-tippy-content="The diameter of the pitch circle, which is the reference circle for gear calculations. Primary design parameter in PD-based method.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="pitch_diameter" placeholder="e.g. 4.0" step="any" min="0.1" max="200">
+            <span class="input-unit">in</span>
+          </div>
+          <div class="field-error" id="err_pitch_diameter"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="num_teeth">
+            Number of Teeth (Z)
+            <span class="unit-badge">count</span>
+            <span class="tooltip-icon" data-tippy-content="Total number of teeth on the gear. Must be a whole number. Together with PD it defines the diametral pitch.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="num_teeth" placeholder="e.g. 20" step="1" min="6" max="500">
+            <span class="input-unit">—</span>
+          </div>
+          <div class="field-error" id="err_num_teeth"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="helix_angle">
+            Helix Angle (β)
+            <span class="unit-badge">°</span>
+            <span class="tooltip-icon" data-tippy-content="Angle between the tooth helix and the gear axis. Typical values: 15°–35°. Higher angles improve smoothness but increase axial thrust.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="helix_angle" placeholder="e.g. 20.0" step="any" min="1" max="89">
+            <span class="input-unit">°</span>
+          </div>
+          <div class="field-error" id="err_helix_angle"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="pressure_angle">
+            Normal Pressure Angle (φ)
+            <span class="unit-badge">°</span>
+            <span class="tooltip-icon" data-tippy-content="Normal pressure angle (φₙ). Standard values: 14.5°, 20°, 25°. Determines tooth shape and load capacity. The transverse pressure angle is derived internally.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="pressure_angle" placeholder="e.g. 20.0" step="any" min="1" max="45">
+            <span class="input-unit">°</span>
+          </div>
+          <div class="field-error" id="err_pressure_angle"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="face_width">
+            Face Width (F)
+            <span class="unit-badge">in</span>
+            <span class="tooltip-icon" data-tippy-content="The length of the gear teeth along the gear axis. Typical range: 0.5 × PD to 2 × PD. Wider face increases load capacity.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="face_width" placeholder="e.g. 2.0" step="any" min="0.01" max="100">
+            <span class="input-unit">in</span>
+          </div>
+          <div class="field-error" id="err_face_width"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ---- Operating Conditions ---- -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">⚡</div>
+        <h3>Operating Conditions</h3>
+      </div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label for="power">
+            Input Power (HP)
+            <span class="unit-badge">HP</span>
+            <span class="tooltip-icon" data-tippy-content="Power transmitted by the gear in horsepower. Used to calculate torque and tangential forces. 1 HP = 550 ft·lbf/s = 6600 lb·in/min.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="power" placeholder="e.g. 10.0" step="any" min="0.001" max="100000">
+            <span class="input-unit">HP</span>
+          </div>
+          <div class="field-error" id="err_power"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="rpm">
+            Rotational Speed (RPM)
+            <span class="unit-badge">RPM</span>
+            <span class="tooltip-icon" data-tippy-content="Shaft rotational speed in revolutions per minute. Used with horsepower to calculate torque: T = HP × 63,025 / RPM (lb·in).">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="rpm" placeholder="e.g. 1750" step="any" min="1" max="100000">
+            <span class="input-unit">RPM</span>
+          </div>
+          <div class="field-error" id="err_rpm"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ---- Gear Pair ---- -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">⚙</div>
+        <h3>Gear Pair Information</h3>
+      </div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label for="pinion_teeth">
+            Pinion Teeth (Z₁)
+            <span class="unit-badge">count</span>
+            <span class="tooltip-icon" data-tippy-content="Number of teeth on the driving gear (pinion). Used to calculate gear ratio. Typically the smaller gear in the pair.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="pinion_teeth" placeholder="e.g. 18" step="1" min="6" max="500">
+            <span class="input-unit">—</span>
+          </div>
+          <div class="field-error" id="err_pinion_teeth"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="gear_teeth">
+            Gear Teeth (Z₂)
+            <span class="unit-badge">count</span>
+            <span class="tooltip-icon" data-tippy-content="Number of teeth on the driven gear. Used to calculate gear ratio: GR = Z₂ / Z₁.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="gear_teeth" placeholder="e.g. 54" step="1" min="6" max="500">
+            <span class="input-unit">—</span>
+          </div>
+          <div class="field-error" id="err_gear_teeth"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ---- Load Factors ---- -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">🔧</div>
+        <h3>Load Factors</h3>
+      </div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label for="service_factor">
+            Service Factor (Ks)
+            <span class="unit-badge">—</span>
+            <span class="tooltip-icon" data-tippy-content="Accounts for shock and dynamic loads beyond rated conditions. Typical values: 1.0 (uniform), 1.25 (moderate shock), 1.5–2.0 (heavy shock). Multiplied into tangential force.">ⓘ</span>
+          </label>
+          <div class="input-wrap">
+            <input type="number" id="service_factor" placeholder="e.g. 1.25" step="any" min="0.5" max="5">
+            <span class="input-unit">—</span>
+          </div>
+          <div class="field-error" id="err_service_factor"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ---- Output Selection ---- -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">✅</div>
+        <h3>Output Selection</h3>
+      </div>
+      <div class="card-body">
+        <div class="select-controls">
+          <button class="btn btn-outline btn-sm" id="btnSelectAll">Select All</button>
+          <button class="btn btn-ghost btn-sm" id="btnClearAll">Clear All</button>
+        </div>
+        <div class="output-grid" id="outputGrid"></div>
+      </div>
+    </div>
+
+    <!-- ---- Calculate Button ---- -->
+    <div class="calc-btn-wrap">
+      <button class="btn-calculate" id="btnCalculate">⚡ Calculate</button>
+    </div>
+
+  </aside>
+
+  <!-- ================================================================
+       MAIN CONTENT — RESULTS + FORMULAS
+  ================================================================ -->
+  <main class="main-content">
+
+    <!-- Results Zone -->
+    <div id="resultsZone">
+      <div class="results-placeholder">
+        <div class="big-icon">⚙</div>
+        <h2>Awaiting Calculation</h2>
+        <p>Fill in the input parameters on the left, select your desired outputs, then click <strong>Calculate</strong>.</p>
+      </div>
+    </div>
+
+    <!-- Formula Reference -->
+    <div class="card" style="margin-top: 1.5rem;">
+      <div class="card-header">
+        <div class="icon">📖</div>
+        <h3>Formula Reference — PD-Based Method (Inch Units)</h3>
+      </div>
+      <div class="card-body">
+        <div class="formula-grid">
+
+          <div class="formula-item">
+            <div class="f-name">Diametral Pitch</div>
+            <div class="f-eq">DP = Z / PD</div>
+            <div class="f-desc">Teeth per inch of pitch diameter. Defines tooth size.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Circular Pitch</div>
+            <div class="f-eq">CP = π / DP = π·PD / Z</div>
+            <div class="f-desc">Arc length between corresponding points of adjacent teeth.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Transverse Pressure Angle</div>
+            <div class="f-eq">tan(φₜ) = tan(φₙ) / cos(β)</div>
+            <div class="f-desc">Derived from normal pressure angle and helix angle.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Base Circle Diameter</div>
+            <div class="f-eq">BCD = PD · cos(φₜ)</div>
+            <div class="f-desc">Diameter of the involute base circle in the transverse plane.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Outside Diameter</div>
+            <div class="f-eq">OD = PD + 2/DP</div>
+            <div class="f-desc">Addendum = 1/DP. Total outer diameter of the gear.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Root Diameter</div>
+            <div class="f-eq">RD = PD − 2.5/DP</div>
+            <div class="f-desc">Dedendum = 1.25/DP (standard full depth). Diameter at tooth root.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Lead</div>
+            <div class="f-eq">L = π·PD / tan(β)</div>
+            <div class="f-desc">Axial advance per one full revolution of the helix.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Gear Ratio</div>
+            <div class="f-eq">GR = Z₂ / Z₁</div>
+            <div class="f-desc">Speed reduction ratio from pinion to gear.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Torque</div>
+            <div class="f-eq">T = HP × 63,025 / RPM</div>
+            <div class="f-desc">Driving torque in lb·in. Constant 63,025 = 33,000 × 12 / (2π).</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Tangential Force</div>
+            <div class="f-eq">Wₜ = (2T / PD) × Ks</div>
+            <div class="f-desc">Tangential tooth load in lbf, scaled by service factor.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Axial Force</div>
+            <div class="f-eq">Wₐ = Wₜ · tan(β)</div>
+            <div class="f-desc">Axial (thrust) force component due to helix angle.</div>
+          </div>
+
+          <div class="formula-item">
+            <div class="f-name">Normal Diametral Pitch</div>
+            <div class="f-eq">DPₙ = DP / cos(β)</div>
+            <div class="f-desc">Diametral pitch in the normal plane (used for tool selection).</div>
+          </div>
+
+        </div>
+
+        <hr class="section-sep" style="margin-top:1.25rem">
+        <div style="font-size:0.78rem;color:var(--text-muted);line-height:1.7;margin-top:0.75rem">
+          <strong style="color:var(--text-muted)">Engineering Assumptions:</strong>
+          Standard full-depth tooth profile (AGMA / ANSI) — Addendum = 1/DP, Dedendum = 1.25/DP.
+          Normal pressure angle is the input angle; transverse pressure angle is derived.
+          Service factor is applied directly to tangential force.
+          Torque constant 63,025 assumes HP, RPM, and lb·in units.
+          All dimensions are in <strong>inches (in)</strong>.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- =====================================================================
+     SAVE MODAL
+===================================================================== -->
+<div class="modal-overlay hidden" id="saveModal">
+  <div class="modal">
+    <h2>💾 Save Project Data</h2>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem">
+      Copy the JSON below or download it as a file to reload later.
+    </p>
+    <textarea id="saveData" rows="10" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnSaveClose">Close</button>
+      <button class="btn btn-outline" id="btnSaveCopy">📋 Copy</button>
+      <button class="btn btn-primary" id="btnSaveDownload">⬇ Download JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
+     LOAD MODAL
+===================================================================== -->
+<div class="modal-overlay hidden" id="loadModal">
+  <div class="modal">
+    <h2>📂 Load Project Data</h2>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem">
+      Paste your saved JSON below, or load from a file.
+    </p>
+    <textarea id="loadData" rows="8" placeholder='{"inputs": {...}, "outputs": [...]}'></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnLoadClose">Cancel</button>
+      <button class="btn btn-outline" id="btnLoadFile">📁 Load File</button>
+      <button class="btn btn-primary" id="btnLoadApply">✅ Apply</button>
+    </div>
+  </div>
+  <input type="file" id="loadFileInput" accept=".json" style="display:none">
+</div>
+
+<!-- =====================================================================
+     TOAST CONTAINER
+===================================================================== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Scripts -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+  // Initialise tooltips
+  tippy('[data-tippy-content]', {
+    theme: 'dark',
+    placement: 'right',
+    arrow: true,
+    delay: [200, 0],
+  });
+</script>
+</body>
+</html>
