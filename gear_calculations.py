@@ -4,6 +4,7 @@ AGMA Helical Gear Design Calculations - Imperial Units
 import math
 from typing import Dict, Optional, Tuple, List
 
+
 class HelicalGearCalculations:
 
     # GEOMETRY CALCULATIONS
@@ -169,7 +170,6 @@ class HelicalGearCalculations:
     def calc_Ks(Pn, F, J):
         """
         Ks = 1.192 * (F * sqrt(Y) / Pn)^0.0535   AGMA
-        where Y ≈ J for simplification
         For Pn >= 5: Ks = 1.0
         """
         if Pn >= 5:
@@ -185,12 +185,8 @@ class HelicalGearCalculations:
     def calc_Km(F, Dp):
         """
         Simplified AGMA Km
-        Km = 1 + Cpf + Cma
-        Cpf = F/(10*Dp) - 0.025  for F <= 1
-        Cpf = F/(10*Dp) - 0.0375 + 0.0125*F  for 1 < F <= 17
-        Cma from face width
+        Km = 1 + Cmc*(Cpf*Cpm + Cma*Ce)
         """
-        # Cpf calculation
         if F <= 1.0:
             Cpf = F / (10.0 * Dp) - 0.025
         elif F <= 17.0:
@@ -199,19 +195,16 @@ class HelicalGearCalculations:
             Cpf = F / (10.0 * Dp) - 0.1109 + 0.0207 * F - 0.000228 * F ** 2
         Cpf = max(0, Cpf)
 
-        # Cma (commercial enclosed gear units)
         if F <= 1.0:
             Cma = 0.0675 + 0.0128 * F - 0.926e-3 * F ** 2
         elif F <= 6.0:
             Cma = 0.0675 + 0.0128 * F - 0.926e-4 * F ** 2
-        elif F <= 10.0:
-            Cma = 0.00360 + 0.0102 * F - 0.822e-4 * F ** 2
         else:
             Cma = 0.00360 + 0.0102 * F - 0.822e-4 * F ** 2
 
-        Cpm = 1.0  # assume straddle mounting
-        Ce = 1.0   # assumed
-        Cmc = 1.0  # uncrowned teeth
+        Cpm = 1.0
+        Ce = 1.0
+        Cmc = 1.0
 
         Km = 1 + Cmc * (Cpf * Cpm + Cma * Ce)
         formula = "Km = 1 + Cmc×(Cpf×Cpm + Cma×Ce)"
@@ -246,9 +239,7 @@ class HelicalGearCalculations:
 
     @staticmethod
     def calc_allowable_bending_stress(sat, YN, KT, KR, SF=1.0):
-        """
-        sigma_at = sat * YN / (SF * KT * KR)
-        """
+        """sigma_at = sat * YN / (SF * KT * KR)"""
         result = sat * YN / (SF * KT * KR)
         formula = "σat = sat × YN / (SF × KT × KR)"
         substitution = f"σat = {sat} × {YN:.4f} / ({SF} × {KT} × {KR})"
@@ -256,9 +247,7 @@ class HelicalGearCalculations:
 
     @staticmethod
     def calc_allowable_contact_stress(sac, ZN, CH, KT, KR, SF=1.0):
-        """
-        sigma_ac = sac * ZN * CH / (SF * KT * KR)
-        """
+        """sigma_ac = sac * ZN * CH / (SF * KT * KR)"""
         result = sac * ZN * CH / (SF * KT * KR)
         formula = "σac = sac × ZN × CH / (SF × KT × KR)"
         substitution = f"σac = {sac} × {ZN:.4f} × {CH} / ({SF} × {KT} × {KR})"
@@ -284,9 +273,7 @@ class HelicalGearCalculations:
     @staticmethod
     def calc_YN(Nc, hardness_type="160HB"):
         """Bending Stress Cycle Factor YN"""
-        if hardness_type == "160HB":
-            result = 1.3558 * Nc ** (-0.0178)
-        elif hardness_type == "250HB":
+        if hardness_type in ("160HB", "250HB"):
             result = 1.3558 * Nc ** (-0.0178)
         elif hardness_type == "400HB":
             result = 9.4518 * Nc ** (-0.148)
@@ -324,13 +311,9 @@ class HelicalGearCalculations:
     # GEOMETRY FACTOR I (Contact) for helical gears
     @staticmethod
     def calc_I_factor(phi_t, psi, mG):
-        """
-        Geometry Factor I (Pitting Resistance) for helical gears
-        I = (cos(phi_t) * sin(phi_t)) / (2 * mN) * (mG / (mG + 1))
-        """
+        """Geometry Factor I (Pitting Resistance) for helical gears"""
         phi_t_r = math.radians(phi_t)
         psi_r = math.radians(psi)
-        # Load sharing ratio mN for helical gears
         psi_b = math.atan(math.tan(psi_r) * math.cos(phi_t_r))
         mN = 1.0 / math.cos(psi_b)
 
@@ -344,7 +327,7 @@ class HelicalGearCalculations:
     # EFFICIENCY
     @staticmethod
     def calc_efficiency(psi, phi_n):
-        """e = approximate efficiency for helical gear"""
+        """Approximate gear efficiency"""
         f = 0.05  # friction coefficient
         psi_r = math.radians(psi)
         e = (1 - math.pi * f / math.tan(psi_r)) * 100
